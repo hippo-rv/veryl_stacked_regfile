@@ -1,0 +1,75 @@
+// src/regfile_test.veryl
+
+#[test(regfile_instance)]
+embed (inline) sv{{{
+    // import veryl_stacked_regfile_RegFilePkg::*;
+    module test ;
+
+        logic i_clk;
+        logic i_reset;
+        
+        //Command i_command;
+        logic [1:0] i_command;
+        logic [31:0] i_push_data [31];
+        logic [31:0] i_pop_data [31];
+        
+        logic [31:0] o_data [31];
+        
+        veryl_stacked_regfile_RegFileInstance regfile_instance(
+            i_clk,
+            i_reset,
+            i_command,
+            i_push_data,
+            i_pop_data, 
+            o_data
+        );
+
+        initial begin
+            i_clk = 0; 
+            i_reset = 1; 
+            //i_command = Command::push; // push
+            i_command = 1;
+            i_push_data[0] = 1; // push
+            i_push_data[1] = 2; // push
+            i_pop_data[0] = 3;  // pop
+            i_pop_data[1] = 4;  // pop
+            
+            // hold reset
+            #10; i_clk=1; #10; i_clk=0;
+            assert (o_data[0] == 0) else $error("0 -- reset");
+            assert (o_data[1] == 0) else $error("0 -- reset");
+            
+            // release reset
+            i_reset = 0;
+            #10; i_clk=1; #10; i_clk=0;
+            assert (o_data[0] == 1) else $error("1 -- push");
+            assert (o_data[1] == 2) else $error("2 -- push");
+            
+            i_command = 2; // pop
+            #10; i_clk=1; #10; i_clk=0; 
+            assert (o_data[0] == 3) else $error("3 -- pop");
+            assert (o_data[1] == 4) else $error("4 -- pop"); 
+
+            i_command = 0; // nop
+            i_push_data[0] = 42; // push
+            i_push_data[1] = 43; // push
+            i_pop_data[0] = 44;  // pop
+            i_pop_data[1] = 45;  // pop
+
+            #10; i_clk=1; #10; i_clk=0; 
+            assert (o_data[0] == 3) else $error("3 -- retained");
+            assert (o_data[1] == 4) else $error("4 -- retained"); 
+              
+            // reset 
+            i_reset = 1;
+            #10; i_clk=1; #10; i_clk=0;
+            assert (o_data[0] == 0) else $error("0 -- re-reset");
+            assert (o_data[1] == 0) else $error("0 -- re-reset");
+        
+            i_reset = 0;
+            #10; i_clk=1; #10; i_clk=0;
+
+            $finish;
+         end
+   endmodule
+}}}

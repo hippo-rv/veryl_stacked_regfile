@@ -1,0 +1,11 @@
+// src/regfile_package.veryl
+
+package RegFilePkg {
+
+    enum Command: logic<2> {
+        none = 0,
+        push = 1,
+        pop = 2,
+    }
+
+}

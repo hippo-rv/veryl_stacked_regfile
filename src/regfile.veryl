@@ -1,0 +1,32 @@
+// src/regfile.veryl
+
+module RegFile (
+    i_clk     : input  clock    , // dedicated clock
+    i_reset   : input  reset    , // dedicated reset
+    i_a_addr  : input  logic<5> ,
+    i_b_addr  : input  logic<5> ,
+    i_w_ena   : input  logic    ,
+    i_w_addr  : input  logic<5> ,
+    i_w_data  : input  logic<32>,
+    o_a_data  : output logic<32>,
+    o_b_data  : output logic<32>,
+) {
+    var regs: logic<32> [32];
+    always_ff {
+        if i_reset {
+            // regs = {{32'0} repeat 32};
+            for i: u32 in 0..32 {
+                regs[i] = 0;
+            }
+        } else {
+            if i_w_ena {
+                regs[i_w_addr] = i_w_data;
+            }
+        }
+    }
+
+    always_comb {
+        o_a_data   = if i_a_addr == 0 ? 0 : regs[i_a_addr];
+        o_b_data   = if i_b_addr == 0 ? 0 : regs[i_b_addr];
+    }
+}

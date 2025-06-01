@@ -1,0 +1,82 @@
+// src/regfile_test.veryl
+
+#[test(regfile)]
+embed (inline) sv{{{
+    module test;
+        logic i_clk;
+        logic i_reset;
+        logic [4:0] i_a_addr;
+        logic [4:0] i_b_addr;
+        logic i_w_ena;
+        logic [4:0] i_w_addr;
+        logic [31:0] i_w_data;
+        logic [31:0] o_a_data;
+        logic [31:0] o_b_data;
+        
+        veryl_stacked_regfile_RegFile regfile(
+            i_clk,
+            i_reset, 
+            i_a_addr,
+            i_b_addr,
+            i_w_ena,
+            i_w_addr,
+            i_w_data,
+            o_a_data,
+            o_b_data
+        );
+
+        initial begin
+            i_clk = 0; 
+            i_reset = 1; 
+            i_a_addr = 0; 
+            i_b_addr = 0; 
+            i_w_ena = 0; 
+            i_w_addr = 0; 
+            i_w_data = 0; 
+
+            // hold reset
+            #10; i_clk=1; #10; i_clk=0;
+            assert (o_a_data == 0) else $error("0");
+            assert (o_b_data == 0) else $error("0");
+
+            // release reset
+            i_reset = 0;
+            #10; i_clk=1; #10; i_clk=0;
+            
+            // write to reg 0
+            i_w_ena = 1;
+            i_w_data = 10;
+            i_a_addr = 1;
+            #10; i_clk=1; #10; i_clk=0;
+              
+            // write to reg 1
+            i_w_addr = 1;
+            i_w_data = 100;
+            #10; i_clk=1; #10; i_clk=0;          
+
+            // write to reg 2
+            i_w_addr = 2;
+            i_w_data = 1000;
+            i_b_addr = 2;
+            #10; i_clk=1; #10; i_clk=0;         
+
+            // write to reg 2, with iw_ena false
+            i_w_ena = 0;
+            i_w_data = 2000;
+            #10; i_clk=1; #10; i_clk=0;     
+
+            #10; i_clk=1; #10; i_clk=0;    
+
+            // reset 
+            i_reset = 1;
+            #10; i_clk=1; #10; i_clk=0;
+            assert (o_a_data == 0) else $error("0");
+            assert (o_b_data == 0) else $error("0");
+        
+            i_reset = 0;
+            #10; i_clk=1; #10; i_clk=0;
+
+            $finish;
+         end
+   endmodule
+}}}
