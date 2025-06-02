@@ -1,0 +1,59 @@
+// src/regfile_stack.veryl
+
+module RegFileStack #(
+    param Depth: u32 = 4,
+) (
+    i_clk  : input clock, // dedicated clock
+    i_reset: input reset, // dedicated reset
+    // i_command  : input  RegFilePkg::Command         ,
+    i_command: input  logic<2> ,
+    i_a_addr : input  logic<5> ,
+    i_b_addr : input  logic<5> ,
+    i_w_ena  : input  logic    ,
+    i_w_addr : input  logic<5> ,
+    i_w_data : input  logic<32>,
+    o_a_data : output logic<32>,
+    o_b_data : output logic<32>,
+) {
+    var rf_stack: logic<32> [Depth + 1, 31];
+
+    for i in 0..Depth - 1 :label {
+        inst rf: RegFileInstance (
+            i_clk                       ,
+            i_reset                     ,
+            i_command                   ,
+            i_push_data: rf_stack[i]    ,
+            i_pop_data : rf_stack[i + 2],
+            o_data     : rf_stack[i + 1],
+        );
+    }
+
+    var regs: logic<32> [32];
+    always_ff {
+        if i_reset {
+            for i: u32 in 0..32 {
+                regs[i] = 0;
+            }
+        } else {
+            case i_command {
+                // pop
+                2: regs[1:31] = rf_stack[1];
+                // none, push
+                default: if i_w_ena {
+                    regs[i_w_addr] = i_w_data;
+                }
+            }
+        }
+    }
+
+    always_comb {
+        // connect top level
+        rf_stack[0] = regs[1:31]; // skip register 0
+
+        // connect outputs with write forwarding
+        o_a_data = if i_a_addr == 0 ? 0 : if i_w_ena && (i_a_addr == i_w_addr) ? i_w_data : regs[i_a_addr];
+
+        o_b_data = if i_b_addr == 0 ? 0 : if i_w_ena && (i_b_addr == i_w_addr) ? i_w_data : regs[i_b_addr];
+    }
+
+}
