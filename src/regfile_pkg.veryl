@@ -1,4 +1,4 @@
-// src/regfile_package.veryl
+// src/regfile_pkg.veryl
 
 package RegFilePkg {
 

@@ -6,11 +6,10 @@ module RegFileInstance (
     i_clk  : input clock, // dedicated clock
     i_reset: input reset, // dedicated reset
 
-    // i_command  : input  Command         ,
-    i_command  : input  logic<2>      ,
-    i_push_data: input  logic<32> [31],
-    i_pop_data : input  logic<32> [31],
-    o_data     : output logic<32> [31],
+    i_command  : input  Command         ,
+    i_push_data: input  logic  <32> [31],
+    i_pop_data : input  logic  <32> [31],
+    o_data     : output logic  <32> [31],
 ) {
     var regs: logic<32> [31];
     always_ff {
@@ -19,15 +18,10 @@ module RegFileInstance (
                 regs[i] = 0;
             }
         } else {
-            // case i_command {
-            //     Command::push: regs = i_push_data;
-            //     Command::pop : regs = i_pop_data;
-            //     default      : regs = regs;
-            // }
             case i_command {
-                1      : regs = i_push_data;
-                2      : regs = i_pop_data;
-                default: {} // retain state
+                Command::push: regs = i_push_data;
+                Command::pop : regs = i_pop_data;
+                default      : {}
             }
         }
     }

@@ -2,12 +2,12 @@
 
 #[test(regfile_stack)]
 embed (inline) sv{{{
+    import veryl_stacked_regfile_RegFilePkg::*;
     module test;
         logic i_clk;
         logic i_reset;
 
-        //Command i_command;
-        logic [1:0] i_command;
+        Command i_command;
         logic [4:0] i_a_addr;
         logic [4:0] i_b_addr;
         logic i_w_ena;
@@ -37,6 +37,7 @@ embed (inline) sv{{{
             i_w_ena = 0; 
             i_w_addr = 0; 
             i_w_data = 0; 
+            i_command = Command_none;
 
             // hold reset
             #10; i_clk=1; #10; i_clk=0;
@@ -82,7 +83,7 @@ embed (inline) sv{{{
             #10; i_clk=1; #10; i_clk=0;
 
             // test stacking
-
+            // reg[1] <- 'h1000_0000;
             i_a_addr = 1; 
             i_b_addr = 31; 
             i_w_ena = 1; 
@@ -92,32 +93,47 @@ embed (inline) sv{{{
             #10; i_clk=1; #10; i_clk=0;
 
             i_w_addr = 31;
-            i_w_data = 'h2000_0000;; 
+            i_w_data = 'h2000_0000;
+            // reg[31] <- 'h2000_0000; 
 
             #10; i_clk=1; #10; i_clk=0;
 
             // push
-            i_command = 1;
+            i_command = Command_push;
             i_w_ena = 1;
             i_w_addr = 1; 
             i_w_data = 'h1000_1000; 
+            // reg[1] <- 'h1000_1000;
 
             #10; i_clk=1; #10; i_clk=0;
-
-            i_command = 0; // nop
-            i_w_addr = 31; 
-            i_w_data = 'h2000_2000; 
-            #10; i_clk=1; #10; i_clk=0;
-
-            // pop
-            i_command = 2; // pop
-            i_w_ena = 0;
-            i_w_addr = 10;
-            #10; i_clk=1; #10; i_clk=0;
+            assert (o_a_data == 'h1000_1000) else $error("write to new context");
+            assert (o_b_data == 'h2000_0000) else $error("old context read");
 
             // nop
-            i_command = 0;
+            i_command = Command_none; 
+            i_w_addr = 31; 
+            i_w_data = 'h2000_2000; 
+            // reg[31] <- 'h2000_2000;
             #10; i_clk=1; #10; i_clk=0;
+            assert (o_a_data == 'h1000_1000) else $error("new context, value stored");
+            assert (o_b_data == 'h2000_2000) else $error("write to new context");
+
+            // pop
+            i_command = Command_pop; 
+            i_w_ena = 1;
+            i_w_addr = 10;
+            i_w_data = 'h1010_1010; 
+            // reg[10] <- 'h1010_1010;
+            #10; i_clk=1; #10; i_clk=0;
+            assert (o_a_data == 'h1000_0000) else $error("old context, value re-stored");
+            assert (o_b_data == 'h2000_0000) else $error("old context, value re-stored");
+
+            // nop
+            i_command = Command_none;
+            i_w_ena = 0;
+            i_a_addr = 10;
+            #10; i_clk=1; #10; i_clk=0;
+            assert (o_a_data == 'h0000_0000) else $error("old context, new value ignored on pop");
 
             $finish;
          end

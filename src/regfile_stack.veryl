@@ -1,19 +1,20 @@
 // src/regfile_stack.veryl
 
+import RegFilePkg::*;
+
 module RegFileStack #(
     param Depth: u32 = 4,
 ) (
-    i_clk  : input clock, // dedicated clock
-    i_reset: input reset, // dedicated reset
-    // i_command  : input  RegFilePkg::Command         ,
-    i_command: input  logic<2> ,
-    i_a_addr : input  logic<5> ,
-    i_b_addr : input  logic<5> ,
-    i_w_ena  : input  logic    ,
-    i_w_addr : input  logic<5> ,
-    i_w_data : input  logic<32>,
-    o_a_data : output logic<32>,
-    o_b_data : output logic<32>,
+    i_clk    : input  clock                  , // dedicated clock
+    i_reset  : input  reset                  , // dedicated reset
+    i_command: input  RegFilePkg::Command    ,
+    i_a_addr : input  logic              <5> ,
+    i_b_addr : input  logic              <5> ,
+    i_w_ena  : input  logic                  ,
+    i_w_addr : input  logic              <5> ,
+    i_w_data : input  logic              <32>,
+    o_a_data : output logic              <32>,
+    o_b_data : output logic              <32>,
 ) {
     var rf_stack: logic<32> [Depth + 1, 31];
 
@@ -37,7 +38,7 @@ module RegFileStack #(
         } else {
             case i_command {
                 // pop
-                2: regs[1:31] = rf_stack[1];
+                Command::pop: regs[1:31] = rf_stack[1];
                 // none, push
                 default: if i_w_ena {
                     regs[i_w_addr] = i_w_data;
