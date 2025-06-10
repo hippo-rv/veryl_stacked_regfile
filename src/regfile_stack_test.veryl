@@ -50,11 +50,22 @@ embed (inline) sv{{{
             
             // write to reg 0
             i_w_ena = 1;
+            i_w_addr = 0; 
             i_w_data = 'h10;
             i_a_addr = 0;
+            i_b_addr = 0;
+            #10; i_clk=1; #10; i_clk=0;
+
+            // read reg 0
+            i_w_ena = 0;
+            i_w_addr = 0; 
+            i_w_data = 'h10;
+            i_a_addr = 0;
+            i_b_addr = 0;
             #10; i_clk=1; #10; i_clk=0;
               
             // write to reg 1
+            i_w_ena = 1;
             i_w_addr = 1;
             i_w_data = 'h100;
             i_a_addr = 1;

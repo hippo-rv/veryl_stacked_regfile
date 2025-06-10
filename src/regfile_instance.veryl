@@ -2,26 +2,28 @@
 
 import RegFilePkg::*;
 
-module RegFileInstance (
+module RegFileInstance #(
+    param mask: logic<32> = 32'hffff_ffff,
+) (
     i_clk  : input clock, // dedicated clock
     i_reset: input reset, // dedicated reset
 
     i_command  : input  Command         ,
-    i_push_data: input  logic  <32> [31],
-    i_pop_data : input  logic  <32> [31],
-    o_data     : output logic  <32> [31],
+    i_push_data: input  logic  <32> [32],
+    i_pop_data : input  logic  <32> [32],
+    o_data     : output logic  <32> [32],
 ) {
-    var regs: logic<32> [31];
+    var regs: logic<32> [32];
     always_ff {
-        if i_reset {
-            for i: u32 in 0..31 {
+        for i: u32 in 0..32 {
+            if i_reset | ~mask[i] {
                 regs[i] = 0;
-            }
-        } else {
-            case i_command {
-                Command::push: regs = i_push_data;
-                Command::pop : regs = i_pop_data;
-                default      : {}
+            } else {
+                case i_command {
+                    Command::push: regs[i] = i_push_data[i];
+                    Command::pop : regs[i] = i_pop_data[i];
+                    default      : {}
+                }
             }
         }
     }

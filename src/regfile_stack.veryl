@@ -3,7 +3,46 @@
 import RegFilePkg::*;
 
 module RegFileStack #(
-    param Depth: u32 = 4,
+    param Depth: u32       = 4,
+    param mask : logic<32> = {
+        1'1, // x31 t6
+        1'1, // x30 t5
+        1'1, // x29 t4
+        1'1, // x28 t3
+
+        1'1, // x27 s11
+        1'1, // x26 s10
+        1'1, // x25 s9
+        1'1, // x24 s8
+        1'1, // x23 s7
+        1'1, // x22 s6
+        1'1, // x21 s5
+        1'1, // x20 s4
+        1'1, // x19 s3
+        1'1, // x18 s2
+
+        1'1, // x17 a7
+        1'1, // x16 a6
+        1'1, // x15 a5
+        1'1, // x14 a4
+        1'1, // x13 a3
+        1'1, // x12 a2
+        1'1, // x11 a1
+        1'1, // x10 a0
+
+        1'1, // x9  s1
+        1'1, // x8  s0
+
+        1'1, // x7  t2
+        1'1, // x6  t1
+        1'1, // x5  t0
+
+        1'0, // x4  tp
+        1'0, // x3  gp
+        1'1, // x2  sp
+        1'1, // x1  ra
+        1'0, // x0  zero
+    },
 ) (
     i_clk    : input  clock                  , // dedicated clock
     i_reset  : input  reset                  , // dedicated reset
@@ -16,10 +55,52 @@ module RegFileStack #(
     o_a_data : output logic              <32>,
     o_b_data : output logic              <32>,
 ) {
-    var rf_stack: logic<32> [Depth + 1, 31];
+    var rf_stack: logic<32> [Depth + 1, 32];
+
+    const stack_mask: logic<32> = {
+        1'1, // x31 t6
+        1'1, // x30 t5
+        1'1, // x29 t4
+        1'1, // x28 t3
+
+        1'0, // x27 s11
+        1'0, // x26 s10
+        1'0, // x25 s9
+        1'0, // x24 s8
+        1'0, // x23 s7
+        1'0, // x22 s6
+        1'0, // x21 s5
+        1'0, // x20 s4
+        1'0, // x19 s3
+        1'0, // x18 s2
+
+        1'1, // x17 a7
+        1'1, // x16 a6
+        1'1, // x15 a5
+        1'1, // x14 a4
+        1'1, // x13 a3
+        1'1, // x12 a2
+        1'1, // x11 a1
+        1'1, // x10 a0
+
+        1'0, // x9  s1
+        1'0, // x8  s0
+
+        1'1, // x7  t2
+        1'1, // x6  t1
+        1'1, // x5  t0
+
+        1'0, // x4  tp
+        1'0, // x3  gp
+        1'0, // x2  sp
+        1'1, // x1  ra
+        1'0, // x0  zero
+    };
 
     for i in 0..Depth - 1 :label {
-        inst rf: RegFileInstance (
+        inst rf: RegFileInstance #(
+            mask: stack_mask,
+        ) (
             i_clk                       ,
             i_reset                     ,
             i_command                   ,
@@ -31,17 +112,19 @@ module RegFileStack #(
 
     var regs: logic<32> [32];
     always_ff {
-        if i_reset {
-            for i: u32 in 0..32 {
+        for i: u32 in 0..32 {
+            if i_reset | ~mask[i] {
                 regs[i] = 0;
-            }
-        } else {
-            case i_command {
-                // pop
-                Command::pop: regs[1:31] = rf_stack[1];
-                // none, push
-                default: if i_w_ena {
-                    regs[i_w_addr] = i_w_data;
+            } else {
+                case i_command {
+                    // pop
+                    Command::pop: if stack_mask[i] {
+                        regs[i] = rf_stack[1][i];
+                    }
+                    // none, push
+                    default: if i_w_ena && mask[i] {
+                        regs[i_w_addr] = i_w_data;
+                    }
                 }
             }
         }
@@ -49,12 +132,11 @@ module RegFileStack #(
 
     always_comb {
         // connect top level
-        rf_stack[0] = regs[1:31]; // skip register 0
+        rf_stack[0] = regs; // skip register 0
 
         // connect outputs with write forwarding
-        o_a_data = if i_a_addr == 0 ? 0 : if i_w_ena && (i_a_addr == i_w_addr) ? i_w_data : regs[i_a_addr];
-
-        o_b_data = if i_b_addr == 0 ? 0 : if i_w_ena && (i_b_addr == i_w_addr) ? i_w_data : regs[i_b_addr];
+        o_a_data = if i_w_ena && (i_a_addr != 0) && (i_a_addr == i_w_addr) ? i_w_data : regs[i_a_addr];
+        o_b_data = if i_w_ena && (i_b_addr != 0) && (i_b_addr == i_w_addr) ? i_w_data : regs[i_b_addr];
     }
 
 }
