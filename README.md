@@ -50,7 +50,7 @@ The `Top Regs` column indicates the number of registers to be persistently store
 
 The `Stacked Regs` column indicates the number of registers that needs to be stacked by hardware in case of interrupt/trap entry (and correspondingly de-stacked) on interrupt exit.
 
-For the discussion, we assume IRQ handlers to be generated as *functions* according to the RV32 ABI(s). In case of Rust being used, we assume the IRQ handlers to be attributed `extern "C"` to ensure ABI compatibility. An IRQ handler is bound to the interrupt vector via a wrapping function calling the user provided handler (without arguments) followed by `mret`. The compiler is free to perform inlining of the user provided handler function. 
+For the discussion, we assume IRQ handlers to be defined as *functions* according to the RV32 ABI(s), e.g., compiled for the `riscv32i-unknown-none` triple (implies no operating system, thus .... ehhh needs checking). In case of Rust being used, we assume the IRQ handlers to be attributed `extern "C"` to ensure ABI compatibility. An IRQ handler is bound to the interrupt vector via a wrapping function calling the user provided handler (without arguments) followed by `mret`. The compiler is free to perform inlining of the user provided handler function. 
 
 - `x0`, always reads zero so no need for top level store or stacking.
 - `x1` (Return address), the handler will be responsible for storing/restoring the return address so no hardware stacking is needed.
@@ -58,7 +58,7 @@ For the discussion, we assume IRQ handlers to be generated as *functions* accord
 - `x2, x4` (Global/Thread pointers), do not need stacking assuming that generated code follows the RV32 ISA(s).
 - `x5 - x7` (Temporary registers), need hardware stacking as the user handler is not required to store/restore temporary registers.
 - `x8 - x9` (Callee-saved registers), do not need hardware stacking as the user handler is required to store/restore callee-saved registers.
-- `x10 - x15/x17` (Argument registers), need hardware stacking as the user handler is not required to store/restore argument resters.
+- `x10 - x15/x17` (Argument registers), need hardware stacking as the user handler is not required to store/restore argument registers.
 - `x18 - x27` (Callee-saved registers), do not need hardware stacking as the user handler is required to store/restore callee-saved registers.
 - `x28 - x31` (Temporary registers), need hardware stacking as the user handler is not required to store/restore temporary registers.
 
@@ -102,7 +102,7 @@ module RegFileStack #(
 ) 
 ```
 
-The `mask` parameters defines defines the set of backing store registers (as seen, x0, x3 and x4 are disabled).
+The `mask` parameters defines the set of backing store registers (as seen, `x0`, `x3` and `x4` are disabled in this example).
 
 The `i_command` defines the operations (`Command` enum) is `src/regfile_pkg`.
 
@@ -122,12 +122,68 @@ In case of `Command::pop`, the previous context is poped. By definition, the cur
 
 ### Top level implementation
 
+The top level component caters the user facing register file (blue in below Figure) along with a configurable sized context stack (green in below Figure). The latter essentially operates as a shift  register, where `Command::push` shifts the data right, while the `Command::pop` shifts the data left. In the default case (`Command::none`), the context stack retains its state.
+
 ![to](/images/instance.svg)
 
+### Register file instance
+
+The `RegFileInstance` (`src/regfile_instance.veryl`) provides a configurable mask defining the set of register instances for backing store (thus reducing the complexity of each instance and corresponding interconnects).
+
+```sv
+module RegFileInstance #(
+    param mask: logic<32> = 32'hffff_ffff,
+) (
+    i_clk  : input clock, // dedicated clock
+    i_reset: input reset, // dedicated reset
+
+    i_command  : input  Command         ,
+    i_push_data: input  logic  <32> [32],
+    i_pop_data : input  logic  <32> [32],
+    o_data     : output logic  <32> [32],
+)
+```
+
+### Example RV32 instantiation
+
+The example RV32 instantiation is given below:
+
+![to](/images/instance_reg.svg)
 
 
+As seen, the top level instantiates the set of user accessible registers (excluding `x0, x3 and x4` in our example). Each stack instance provides the set of stacked registers (allowing for further exclusions).
+
+## FPGA Evaluation
+
+Todo:
 
 
+## ASIC Evaluation
+
+Targeting ASIC implementations brings both a new opportunities and new challenges, to name a few:
+
+- Flexible gate level implementations, such as latches (with optional single inverter designs).
+- Clock and power gating.
+
+![to](/images/stacked_power_global.svg) 
+
+The figure above strives to capture possibilities for further evaluation, along the following line of reasoning:
+
+- Targeting small embedded (hard real-time) systems, low power consumption might be deciding factor for success.
+- Implemented by means of interrupt driven execution, idle state implies that no context state needs retention. 
+- The top left clock gate may effectively prevent clock distribution to the complete register file sub system.
+- The bottom left power gate may effectively disable power distribution to the complete register file sub system.
+- Each level of the stacked register file holds an extra single bit to record wether the instance is active or not (0 on reset and power on). Effectively this allows us to detect the case when the system becomes idle on interrupt exit (`Command::pop` marked blue, `Command::push` marked red in Figure). 
+
+This course grained power save approach might be sufficient to reach superior power characteristics over a naive implementation. The challenge here is to correctly implement isolation in between non-powered and powered components. To our advantage, at the point the system becomes idle, there will be no state in the register file that needs to be retained, and consequently, on resuming operation there is no retained state to be restored. This limits power-on transition timing to a bare minimum. 
+
+Further power saves can be envisioned by extending the clock and power gating to individual control for each instance of the stack, as shown below.
+
+![to](/images/stacked_power_save.svg) 
+
+The idea here, is that the clock and power is distributed *only* to active instances of the context stack, thus the cost payed regarding leakage and clock distribution is kept optimal (for the proposed architecture).
+
+Also in this case, the power transition timing will not have to cater for state retention. Wether the fine grained clock and power gating will actually pay off, regarding size/complexity 
 
 ## Dependencies
 
