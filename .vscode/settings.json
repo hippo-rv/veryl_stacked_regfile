@@ -1,6 +1,11 @@
 {
     "cSpell.ignoreWords": [
+        "Unallocatable",
+        "Verilator",
         "endmodule",
+        "fffe",
+        "hffff",
+        "mret",
         "regfile",
         "regs",
         "veryl"
