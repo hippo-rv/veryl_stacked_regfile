@@ -62,6 +62,73 @@ For the discussion, we assume IRQ handlers to be generated as *functions* accord
 - `x18 - x27` (Callee-saved registers), do not need hardware stacking as the user handler is required to store/restore callee-saved registers.
 - `x28 - x31` (Temporary registers), need hardware stacking as the user handler is not required to store/restore temporary registers.
 
+## Implementation
+
+In the following subsections, we break down the design into components and explain their implementation.
+
+### Top level interface
+
+The top level component defines the user facing input and outputs as follows:
+
+![top](/images/top.svg)
+
+The corresponding Veryl component:
+
+```sv
+module RegFileStack #(
+    param Depth: u32       = 4,
+    param mask : logic<32> = {
+        1'1, // x31 t6
+        ...
+        1'1, // x5  t0
+
+        1'0, // x4  tp
+        1'0, // x3  gp
+        1'1, // x2  sp
+        1'1, // x1  ra
+        1'0, // x0  zero
+    },
+) (
+    i_clk    : input  clock                  , // dedicated clock
+    i_reset  : input  reset                  , // dedicated reset
+    i_command: input  RegFilePkg::Command    ,
+    i_a_addr : input  logic              <5> ,
+    i_b_addr : input  logic              <5> ,
+    i_w_ena  : input  logic                  ,
+    i_w_addr : input  logic              <5> ,
+    i_w_data : input  logic              <32>,
+    o_a_data : output logic              <32>,
+    o_b_data : output logic              <32>,
+) 
+```
+
+The `mask` parameters defines defines the set of backing store registers (as seen, x0, x3 and x4 are disabled).
+
+The `i_command` defines the operations (`Command` enum) is `src/regfile_pkg`.
+
+```sv
+    enum Command: logic<2> {
+        none = 0, // normal operation
+        push = 1, // interrupt/trap entry
+        pop = 2, // interrupt/trap exit
+    }
+```
+
+In case the `i_command` has the `Command::none` the register file operates like expected for a non-stacked register file. It implements register write forwarding, allowing to hide latency. Writes to registers without backing store are allowed (e.g., writing register zero) but has no effect (write forwarding is disabled).
+
+In case of `Command::push`, the current context is pushed. Concurrent write operation is allowed and affects the "new" top level, while the stacked context reflects the state *before* the concurrent write. This allows the very first handler instruction to operate on the "new" context.
+
+In case of `Command::pop`, the previous context is poped. By definition, the current instruction is an `mret`, thus no concurrent write will be handled. 
+
+### Top level implementation
+
+![to](/images/instance.svg)
+
+
+
+
+
+
 ## Dependencies
 
 - Verilator, [install](https://verilator.org/guide/latest/install.html)

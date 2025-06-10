@@ -6,6 +6,7 @@
         "fffe",
         "hffff",
         "mret",
+        "poped",
         "regfile",
         "regs",
         "veryl"
