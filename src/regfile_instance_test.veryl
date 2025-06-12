@@ -2,7 +2,7 @@
 
 #[test(regfile_instance)]
 embed (inline) sv{{{
-    // import veryl_stacked_regfile_RegFilePkg::*;
+    import veryl_stacked_regfile_RegFilePkg::*;
     module test ;
 
         logic i_clk;
@@ -10,10 +10,10 @@ embed (inline) sv{{{
         
         //Command i_command;
         logic [1:0] i_command;
-        logic [31:0] i_push_data [31];
-        logic [31:0] i_pop_data [31];
+        logic [31:0] i_push_data [32];
+        logic [31:0] i_pop_data [32];
         
-        logic [31:0] o_data [31];
+        logic [31:0] o_data [32];
         
         veryl_stacked_regfile_RegFileInstance regfile_instance(
             i_clk,
@@ -27,8 +27,7 @@ embed (inline) sv{{{
         initial begin
             i_clk = 0; 
             i_reset = 1; 
-            //i_command = Command::push; // push
-            i_command = 1;
+            i_command = Command_push;
             i_push_data[0] = 1; // push
             i_push_data[1] = 2; // push
             i_pop_data[0] = 3;  // pop
@@ -45,12 +44,12 @@ embed (inline) sv{{{
             assert (o_data[0] == 1) else $error("1 -- push");
             assert (o_data[1] == 2) else $error("2 -- push");
             
-            i_command = 2; // pop
+            i_command = Command_pop;
             #10; i_clk=1; #10; i_clk=0; 
             assert (o_data[0] == 3) else $error("3 -- pop");
             assert (o_data[1] == 4) else $error("4 -- pop"); 
 
-            i_command = 0; // nop
+            i_command = Command_none; // nop
             i_push_data[0] = 42; // push
             i_push_data[1] = 43; // push
             i_pop_data[0] = 44;  // pop
@@ -68,6 +67,8 @@ embed (inline) sv{{{
         
             i_reset = 0;
             #10; i_clk=1; #10; i_clk=0;
+            assert (o_data[0] == 0) else $error("0 -- re-reset");
+            assert (o_data[1] == 0) else $error("0 -- re-reset");
 
             $finish;
          end

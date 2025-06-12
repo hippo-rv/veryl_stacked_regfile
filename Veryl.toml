@@ -3,4 +3,6 @@ name = "veryl_stacked_regfile"
 version = "0.1.0"
 
 [build]
+source = "src"
+target = { type = "directory", path = "target" }
 exclude_std = true
