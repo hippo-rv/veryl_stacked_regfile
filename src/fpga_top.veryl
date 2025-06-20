@@ -1,0 +1,88 @@
+// top module for synthesis tests
+// stops optimization
+module FPGATop (
+    rst : input  reset,
+    btn0: input  logic,
+    btn1: input  logic,
+    btn2: input  logic,
+    btn3: input  logic,
+    led0: output logic,
+    led1: output logic,
+    led2: output logic,
+    led3: output logic,
+) {
+    var clk: clock;
+
+    inst osc: $sv::OSC_TOP (
+        clk  ,
+    );
+
+    var a_addr  : logic<5> ;
+    var b_addr  : logic<5> ;
+    var w_addr  : logic<5> ;
+    var w_data  : logic<32>;
+    var w_ena   : logic    ;
+    var command : logic<2> ;
+    var r_a_data: logic<32>;
+    var r_b_data: logic<32>;
+    inst regfile: RegFileStack (
+        i_clk    : clk     ,
+        i_reset  : rst     ,
+        i_command: command ,
+        i_a_addr : a_addr  ,
+        i_b_addr : b_addr  ,
+        i_w_ena  : w_ena   ,
+        i_w_addr : w_addr  ,
+        i_w_data : w_data  ,
+        o_a_data : r_a_data,
+        o_b_data : r_b_data,
+    );
+
+    var counter  : logic<32>; // source of "non-determinism"
+    var state    : logic<5> ;
+    var viewstate: logic<3> ;
+    always_ff {
+        if_reset {
+            counter   = 0;
+            a_addr    = 0;
+            b_addr    = 0;
+            w_addr    = 0;
+            w_data    = 0;
+            w_ena     = 0;
+            command   = 0;
+            state     = 0;
+            viewstate = 0;
+            led0      = 0;
+            led1      = 0;
+            led2      = 0;
+            led3      = 0;
+        } else {
+            counter += 1;
+            if btn0 {
+                state += 1;
+            }
+            if state == 0 {
+                a_addr = counter[4:0];
+            }
+            if state == 1 {
+                b_addr = counter[4:0];
+            }
+            if state == 2 {
+                w_addr = counter[4:0];
+            }
+            if state == 3 {
+                w_data = counter;
+            }
+            if state == 4 {
+                w_ena = counter[0];
+            }
+            if state == 5 {
+                command = counter[1:0];
+            }
+            if state == 6 {
+                led0 = r_a_data[counter[4:0]];
+                led1 = r_b_data[counter[4:0]];
+            }
+        }
+    }
+}
