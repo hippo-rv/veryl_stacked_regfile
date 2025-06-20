@@ -6,3 +6,4 @@ version = "0.1.0"
 source = "src"
 target = { type = "directory", path = "target" }
 exclude_std = true
+sourcemap_target = { type = "none" }
