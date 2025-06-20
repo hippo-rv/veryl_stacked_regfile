@@ -199,3 +199,26 @@ Also in this case, the power transition timing will not have to cater for state 
 veryl test --wave
 ```
 
+## FPGA Workflow
+
+This repo includes scaffolding for an FPGA workflow (mostly to verify post-synthesis and post-implementation characteristics). The example assumes a Numato Labs ECP5 dev board.
+
+### Dependencies
+- [Synlig](https://github.com/chipsalliance/synlig), wraps Yosys with a SystemVerilog frontend
+- [Yosys](https://github.com/YosysHQ/yosys?tab=readme-ov-file#building-from-source) for synthesis
+- [NextPNR](https://github.com/YosysHQ/nextpnr?tab=readme-ov-file#getting-started) for place and route
+- [Project Trellis](https://github.com/YosysHQ/prjtrellis) for bitstream generation, and other device specifics.
+
+### Typical build commands
+
+```
+veryl build
+synlig -p "read_systemverilog $(cat files.f) oscillator.sv; synth_ecp5 -json out.json"
+```
+transpiles the Veryl code to SystemVerilog, parses it using Synlig, synthesizes a netlist and writes it to `out.json`.
+
+```
+nextpnr-ecp5 --json out.json --textcfg out.cfg --45k --package CABGA256 --lpf numato.lpf
+```
+takes that netlist, and runs place-and-route assuming a 45k Lattice ECP5 FPGA, and the constraints specified in numato.lpf. The end results are written to `out.cfg`.
+
