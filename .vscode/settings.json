@@ -1,15 +1,26 @@
 {
     "cSpell.ignoreWords": [
         "ASIC",
+        "CABGA",
+        "FGPAs",
+        "Synlig",
         "Unallocatable",
         "Verilator",
+        "Verilog",
+        "Yosys",
         "endmodule",
         "fffe",
         "hffff",
         "mret",
+        "netlist",
+        "nextpnr",
+        "numato",
         "poped",
+        "prjtrellis",
         "regfile",
         "regs",
+        "systemverilog",
+        "textcfg",
         "veryl"
     ]
 }

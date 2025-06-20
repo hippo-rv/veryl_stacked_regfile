@@ -1,10 +1,10 @@
 # Veryl Stacked Register File
 
-Stacked register file implementation with outstanding features:
+Stacked Register File (SRF) implementation with outstanding features:
 
-- Stacked register windowing, with low complexity access to current register context (top of stack).
+- Stacked Register Windowing with low complexity access to current register context (top of stack).
 - Write forwarding, hiding latency allowing for single-cycle interrupt entry/exit.
-- RISC-V ABI conformant.
+- Configurable RISC-V ABI conformant implementation.
 
 ## Resources
 
@@ -155,7 +155,7 @@ As seen, the top level instantiates the set of user accessible registers (exclud
 
 ## FPGA Evaluation
 
-Todo:
+See below for Open Source Workflow.
 
 
 ## ASIC Evaluation
@@ -203,22 +203,59 @@ veryl test --wave
 
 This repo includes scaffolding for an FPGA workflow (mostly to verify post-synthesis and post-implementation characteristics). The example assumes a Numato Labs ECP5 dev board.
 
-### Dependencies
-- [Synlig](https://github.com/chipsalliance/synlig), wraps Yosys with a SystemVerilog frontend
-- [Yosys](https://github.com/YosysHQ/yosys?tab=readme-ov-file#building-from-source) for synthesis
+### Dependencies and installation
+- [Synlig](https://github.com/chipsalliance/synlig), wraps Yosys with a SystemVerilog frontend. 
+- [Yosys](https://github.com/YosysHQ/yosys?tab=readme-ov-file#building-from-source) for synthesis. 
 - [NextPNR](https://github.com/YosysHQ/nextpnr?tab=readme-ov-file#getting-started) for place and route
 - [Project Trellis](https://github.com/YosysHQ/prjtrellis) for bitstream generation, and other device specifics.
 
-### Typical build commands
+All tools can be installed from source. Under Arch linux based distros, all tools besides Synlig is available in `aur`.
+
+Synlig can be installed by `cd <install_path>` to some install folder and:
+
+```shell
+curl https://api.github.com/repos/chipsalliance/synlig/releases/latest | jq -r '.assets | .[] | select(.name | startswith("synlig")) | .browser_download_url' | xargs wget -O - | tar -xz
+```
+If under `fish` shell, add `synlig` to your path:
+```shell
+fish_add_path <install_path/synlig>
+```
+You should now be able to run `synlig` from your shell.
+
+The remaining tools can be installed by:
+
+```shell
+yay prjtrellis-nightly
+yay yay nextpnr-ecp5-nightly
+```
+
+### YoSys based open source workflow
+
+An all open source synthesis workflow to commonplace FGPAs is possible starting from Veryl. (For this use case we target the Lattice ECP5.)
+
+We first need to transpile the Veryl code to System Verilog, by running:
+```shell
+veryl build
+```
+
+This will produce System Verilog code along with on import list `veryl_stacked_regfile.f`.
+
+However, Yosys free version is not capable to handle System Verilog, thus we need to transpile to Verilog first, e.g., using the Synlig tool. 
+
+However, Synlig cannot currently handle line breaks for the import file, so for now, manually remove them from the `veryl_stacked_regfile.f` and save as `file.f`. 
+
+Now, to transpile and call YoSys with the Verilog files and synthesize a netlist emitted to `out.json`, run: 
 
 ```
-veryl build
-synlig -p "read_systemverilog $(cat files.f) oscillator.sv; synth_ecp5 -json out.json"
+synlig -p "read_systemverilog $(cat file.f) oscillator.sv; synth_ecp5 -json out.json"
 ```
-transpiles the Veryl code to SystemVerilog, parses it using Synlig, synthesizes a netlist and writes it to `out.json`.
+
+Now we can take the netlist and run place-and-route assuming a 45k Lattice ECP5 FPGA under the constraints specified in `numato.lpf` and write results to `out.cfg`, by running:
 
 ```
 nextpnr-ecp5 --json out.json --textcfg out.cfg --45k --package CABGA256 --lpf numato.lpf
 ```
-takes that netlist, and runs place-and-route assuming a 45k Lattice ECP5 FPGA, and the constraints specified in numato.lpf. The end results are written to `out.cfg`.
+
+The generated image implements the Stacked Register File (SRF) along with simple state machine (needed to avoid the SRF to be optimized out).
+
 
