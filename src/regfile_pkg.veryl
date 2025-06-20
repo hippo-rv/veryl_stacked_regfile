@@ -3,9 +3,9 @@
 package RegFilePkg {
 
     enum Command: logic<2> {
-        none = 0, // normal operation
-        push = 1, // interrupt/trap entry
-        pop = 2, // interrupt/trap exit
+        none, //= 0, // normal operation
+        push, //= 1, // interrupt/trap entry
+        pop, //= 2, // interrupt/trap exit
     }
 
 }
