@@ -16,12 +16,12 @@ embed (inline) sv{{{
         logic [31:0] o_data [32];
         
         veryl_stacked_regfile_RegFileInstance regfile_instance(
-            i_clk,
-            i_reset,
-            i_command,
-            i_push_data,
-            i_pop_data, 
-            o_data
+            .i_clk,
+            .i_reset(!i_reset),
+            .i_command,
+            .i_push_data,
+            .i_pop_data, 
+            .o_data
         );
 
         initial begin
