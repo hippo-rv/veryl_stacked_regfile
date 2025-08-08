@@ -11,9 +11,10 @@ embed (inline) sv{{{
         //Command i_command;
         logic [1:0] i_command;
         logic [31:0] i_push_data [32];
-        logic [31:0] i_pop_data [32];
-        
+        logic [31:0] i_pop_data [32]; 
         logic [31:0] o_data [32];
+
+
         
         veryl_stacked_regfile_RegFileInstance regfile_instance(
             .i_clk,

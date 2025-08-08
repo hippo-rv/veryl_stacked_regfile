@@ -17,16 +17,16 @@ embed (inline) sv{{{
         logic [31:0] o_b_data;
         
         veryl_stacked_regfile_RegFileStack regfile(
-            i_clk,
-            i_reset, 
-            i_command,
-            i_a_addr,
-            i_b_addr,
-            i_w_ena,
-            i_w_addr,
-            i_w_data,
-            o_a_data,
-            o_b_data
+            .i_clk,
+            .i_reset(!i_reset), 
+            .i_command,
+            .i_a_addr,
+            .i_b_addr,
+            .i_w_ena,
+            .i_w_addr,
+            .i_w_data,
+            .o_a_data,
+            .o_b_data
         );
 
         initial begin
@@ -62,6 +62,8 @@ embed (inline) sv{{{
             i_w_data = 'h10;
             i_a_addr = 0;
             i_b_addr = 0;
+            assert (o_a_data == 0) else $error("write to reg 0 stuck");
+            assert (o_b_data == 0) else $error("write to reg 0 stuck");
             #10; i_clk=1; #10; i_clk=0;
               
             // write to reg 1
@@ -79,9 +81,13 @@ embed (inline) sv{{{
 
             // write to reg 2, with iw_ena false
             i_w_ena = 0;
+            i_a_addr = 1;
+            i_b_addr = 2;
             i_w_data = 'h2000;
+            assert(o_a_data == 'h100) else $error("write to reg 1 failed");
+            assert(o_b_data == 'h1000) else $error("write to reg 2 failed");
             #10; i_clk=1; #10; i_clk=0;     
-
+            assert(o_b_data == 'h1000) else $error("reg 2 written with i_w_ena false");
             #10; i_clk=1; #10; i_clk=0;    
 
             // reset 
@@ -102,49 +108,66 @@ embed (inline) sv{{{
             i_w_data = 'h1000_0000; 
 
             #10; i_clk=1; #10; i_clk=0;
-
+            assert (o_a_data == 'h1000_0000) else $error("reg 1 write failed");
             i_w_addr = 31;
             i_w_data = 'h2000_0000;
-            // reg[31] <- 'h2000_0000; 
-
+            i_a_addr = 31;
+            // reg[31] <- 'h2000_0000;
+            // rejected through mask 
+            
             #10; i_clk=1; #10; i_clk=0;
-
+            assert(o_a_data == 'h0000_0000) else $error("mask not masking");
+            i_w_addr = 6;
+            i_w_data = 'h9000_0000;
+            i_b_addr = 6;
+            // reg[6] <- 'h9000_0000
+            #10; i_clk=1; #10; i_clk=0;
+            assert(o_b_data == 'h9000_0000);
             // push
+            // this is a write on interrupt dispatch == high,
+            // the instruction will be retired, so write should be to "original depth"
+            // we may also (externally) delay the push by a cycle but i feel thats cheating.
             i_command = Command_push;
             i_w_ena = 1;
             i_w_addr = 1; 
             i_w_data = 'h1000_1000; 
+            i_a_addr = 1;
             // reg[1] <- 'h1000_1000;
 
             #10; i_clk=1; #10; i_clk=0;
+            // this is at depth == 1
             assert (o_a_data == 'h1000_1000) else $error("write to new context");
-            assert (o_b_data == 'h2000_0000) else $error("old context read");
+            assert (o_b_data == 'h9000_0000) else $error("old context read");
 
             // nop
             i_command = Command_none; 
-            i_w_addr = 31; 
-            i_w_data = 'h2000_2000; 
+            i_w_addr = 6; 
+            i_w_data = 'hFFFF_FFFF; 
             // reg[31] <- 'h2000_2000;
             #10; i_clk=1; #10; i_clk=0;
             assert (o_a_data == 'h1000_1000) else $error("new context, value stored");
-            assert (o_b_data == 'h2000_2000) else $error("write to new context");
+            assert (o_b_data == 'hFFFF_FFFF) else $error("write to new context");
 
             // pop
+            // there will NEVER be a register write on return
+            // because it's done by an instruction (with no regfile write),
+            // there is really no point in handling
+            // this edge case
             i_command = Command_pop; 
             i_w_ena = 1;
             i_w_addr = 10;
             i_w_data = 'h1010_1010; 
             // reg[10] <- 'h1010_1010;
             #10; i_clk=1; #10; i_clk=0;
-            assert (o_a_data == 'h1000_0000) else $error("old context, value re-stored");
-            assert (o_b_data == 'h2000_0000) else $error("old context, value re-stored");
+            assert (o_a_data == 'h1000_1000) else $error("old context, value 1 not restored");
+            assert (o_b_data == 'h9000_0000) else $error("old context, value 2 restored (shouldnt according to stack mask)");
 
             // nop
             i_command = Command_none;
             i_w_ena = 0;
             i_a_addr = 10;
             #10; i_clk=1; #10; i_clk=0;
-            assert (o_a_data == 'h0000_0000) else $error("old context, new value ignored on pop");
+            assert (o_a_data == 'h0000_0000) else $error("old context, new value not ignored on pop");
 
             $finish;
          end

@@ -3,26 +3,27 @@
 import RegFilePkg::*;
 
 module RegFileStack #(
-    param Depth: u32       = 4,
-    param mask : logic<32> = {
-        1'1, // x31 t6
-        1'1, // x30 t5
-        1'1, // x29 t4
-        1'1, // x28 t3
+    param Depth: u32 = 4,
+    // default to EABI
+    param mask: logic<32> = {
+        1'0, // x31 t6
+        1'0, // x30 t5
+        1'0, // x29 t4
+        1'0, // x28 t3
 
-        1'1, // x27 s11
-        1'1, // x26 s10
-        1'1, // x25 s9
-        1'1, // x24 s8
-        1'1, // x23 s7
-        1'1, // x22 s6
-        1'1, // x21 s5
-        1'1, // x20 s4
-        1'1, // x19 s3
-        1'1, // x18 s2
+        1'0, // x27 s11
+        1'0, // x26 s10
+        1'0, // x25 s9
+        1'0, // x24 s8
+        1'0, // x23 s7
+        1'0, // x22 s6
+        1'0, // x21 s5
+        1'0, // x20 s4
+        1'0, // x19 s3
+        1'0, // x18 s2
 
-        1'1, // x17 a7
-        1'1, // x16 a6
+        1'0, // x17 a7
+        1'0, // x16 a6
         1'1, // x15 a5
         1'1, // x14 a4
         1'1, // x13 a3
@@ -44,10 +45,10 @@ module RegFileStack #(
         1'0, // x0  zero
     },
     param stack_mask: logic<32> = {
-        1'1, // x31 t6
-        1'1, // x30 t5
-        1'1, // x29 t4
-        1'1, // x28 t3
+        1'0, // x31 t6
+        1'0, // x30 t5
+        1'0, // x29 t4
+        1'0, // x28 t3
 
         1'0, // x27 s11
         1'0, // x26 s10
@@ -60,8 +61,8 @@ module RegFileStack #(
         1'0, // x19 s3
         1'0, // x18 s2
 
-        1'1, // x17 a7
-        1'1, // x16 a6
+        1'0, // x17 a7
+        1'0, // x16 a6
         1'1, // x15 a5
         1'1, // x14 a4
         1'1, // x13 a3
@@ -97,9 +98,7 @@ module RegFileStack #(
     var rf_stack: logic<32> [Depth + 1, 32];
 
     for i in 0..Depth - 1 :label {
-        inst rf: RegFileInstance #(
-            mask: stack_mask,
-        ) (
+        inst rf: RegFileInstance (
             i_clk                       ,
             i_reset                     ,
             i_command                   ,
@@ -118,6 +117,9 @@ module RegFileStack #(
         } else {
             for i: u32 in 0..32 {
                 case i_command {
+                    // on push we could potentially 0 the regs
+                    // if we want no context propagation
+                    // (which i think is the case)
                     Command::pop: if stack_mask[i] {
                         regs[i] = rf_stack[1][i];
                     }
@@ -133,8 +135,8 @@ module RegFileStack #(
         // connect top level
         rf_stack[0] = regs;
 
-        o_a_data = regs[i_a_addr];
-        o_b_data = regs[i_b_addr];
+        o_a_data = if (i_a_addr == 0 || mask[i_a_addr] == 0) ? 0 : regs[i_a_addr];
+        o_b_data = if (i_b_addr == 0 || mask[i_b_addr] == 0) ? 0 : regs[i_b_addr];
     }
 
 }
