@@ -1,5 +1,7 @@
 // top module for synthesis tests
 // stops optimization
+// ignore this in simulation
+#[ifndef(VERILATOR)]
 module FPGATop (
     rst : input  reset,
     btn0: input  logic,
