@@ -62,6 +62,9 @@ For the discussion, we assume IRQ handlers to be defined as *functions* accordin
 - `x18 - x27` (Callee-saved registers), do not need hardware stacking as the user handler is required to store/restore callee-saved registers.
 - `x28 - x31` (Temporary registers), need hardware stacking as the user handler is not required to store/restore temporary registers.
 
+## Specification
+This repo is intended to be seen as an executable specification of the stacked register file as part of the RISC-V Real-Time Extension. Formal models of this module are pending.
+
 ## Implementation
 
 In the following subsections, we break down the design into components and explain their implementation.
